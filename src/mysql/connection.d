@@ -1180,7 +1180,7 @@ private:
 	bool trace_;
 	
 	// For mysql server not support prepared cache.
-	bool allowClientPreparedCache_ = false;
+	bool allowClientPreparedCache_ = true;
 	PreparedStatement[string] clientPreparedCaches;
 }
 
