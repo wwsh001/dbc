@@ -1,0 +1,13 @@
+{
+	"authors": [
+		"Marcio Martins",
+		"Shove"
+	],
+	"name": "dbc",
+	"version": "1.0.0",
+	"targetType": "library",
+	"license": "MIT License",
+	"copyright": "Copyright © 2015, Marcio Martins, Shove",
+	"targetName": "dbc",
+	"description": "Lightweight native MySQL/MariaDB driver"
+}
