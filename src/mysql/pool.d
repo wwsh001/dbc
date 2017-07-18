@@ -28,7 +28,6 @@ final class ConnectionPool
 		string _password;
 		string _database;
 		ushort _port;
-		ConnectionOptions _options;
 		CapabilityFlags _caps;
 		
 		int _maxConnections = 50; 			// 连接池最大的大小
@@ -40,7 +39,7 @@ final class ConnectionPool
 	
 	private this(string host, string user, string password, string database, ushort port = 3306,
 		uint maxConnections = 50, uint initialConnections = 10, uint incrementalConnections = 5,
-		ConnectionOptions options = ConnectionOptions.Default, CapabilityFlags caps = DefaultClientCaps)
+		CapabilityFlags caps = DefaultClientCaps)
 	{
 		this._host = host;
 		this._user = user;
@@ -50,7 +49,6 @@ final class ConnectionPool
 		this._maxConnections = maxConnections;
 		this._initialConnections = initialConnections;
 		this._incrementalConnections = incrementalConnections;
-		this._options = options;
 		this._caps = caps;
 		
 		createConnections(initialConnections);
@@ -58,7 +56,7 @@ final class ConnectionPool
 	
 	static ConnectionPool getInstance(string host, string user, string password, string database, ushort port = 3306,
 		uint maxConnections = 50, uint initialConnections = 10, uint incrementalConnections = 5,
-		ConnectionOptions options = ConnectionOptions.Default, CapabilityFlags caps = DefaultClientCaps)
+		CapabilityFlags caps = DefaultClientCaps)
     {
         if (!_instantiated)
         {
@@ -75,7 +73,6 @@ final class ConnectionPool
 						maxConnections,
 						initialConnections,
 						incrementalConnections,
-						options,
 						caps
 					);
                 }
@@ -103,7 +100,6 @@ final class ConnectionPool
 					this._password,
 					this._database,
 					this._port,
-					this._options,
 					this._caps);
 			_connections ~= new PooledConnection(conn);
 					
@@ -158,7 +154,6 @@ final class ConnectionPool
 						this._password,
 						this._database,
 						this._port,
-						this._options,
 						this._caps);
         		}
         		

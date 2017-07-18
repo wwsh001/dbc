@@ -138,29 +138,29 @@ enum ConnectionOptions {
 	Default						= 0
 }
 
+alias MySQLConnection!(ConnectionOptions.Default) Connection;
 
-class Connection {
+class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default) {
 
 	this(string connectionString)
 	{
-		this(connectionString, ConnectionOptions.Default, DefaultClientCaps);
+		this(connectionString, DefaultClientCaps);
 	}
 
-	this(string connectionString, ConnectionOptions options = ConnectionOptions.Default, CapabilityFlags caps = DefaultClientCaps)
+	this(string connectionString, CapabilityFlags caps = DefaultClientCaps)
 	{
 		settings_ = ConnectionSettings(connectionString);
 		settings_.caps = caps | CapabilityFlags.CLIENT_LONG_PASSWORD | CapabilityFlags.CLIENT_PROTOCOL_41;
-		options_ = options;
 		
 		connect();
 	}
 
 	this(const(char)[] host, const(char)[] user, const(char)[] pwd, const(char)[] db, ushort port = 3306)
 	{
-		this(host, user, pwd, db, port, ConnectionOptions.Default, DefaultClientCaps);
+		this(host, user, pwd, db, port, DefaultClientCaps);
 	}
 
-	this(const(char)[] host, const(char)[] user, const(char)[] pwd, const(char)[] db, ushort port = 3306, ConnectionOptions options = ConnectionOptions.Default, CapabilityFlags caps = DefaultClientCaps)
+	this(const(char)[] host, const(char)[] user, const(char)[] pwd, const(char)[] db, ushort port = 3306, CapabilityFlags caps = DefaultClientCaps)
 	{
 		settings_.host = host;
 		settings_.user = user;
@@ -168,7 +168,6 @@ class Connection {
 		settings_.db = db;
 		settings_.port = port;
 		settings_.caps = caps | CapabilityFlags.CLIENT_LONG_PASSWORD | CapabilityFlags.CLIENT_PROTOCOL_41;
-		options_ = options;
 		
 		connect();
 	}
@@ -193,9 +192,11 @@ class Connection {
 		eatStatus!(File, Line)(retrieve());
 	}
 
-	void reset(string File=__FILE__, size_t Line=__LINE__)() {
-		send(Commands.COM_RESET_CONNECTION);
-		eatStatus!(File, Line)(retrieve());
+	static if ((Options & ConnectionOptions.TextProtocol) == 0) {
+		void reset(string File=__FILE__, size_t Line=__LINE__)() {
+			send(Commands.COM_RESET_CONNECTION);
+			eatStatus!(File, Line)(retrieve());
+		}
 	}
 
 	const(char)[] statistics() {
@@ -258,7 +259,7 @@ class Connection {
 	}
 
 	void execute(string File=__FILE__, size_t Line=__LINE__, Args...)(const(char)[] sql, Args args) {
-		/*static */if (options_ & ConnectionOptions.TextProtocol) {
+		static if (Options & ConnectionOptions.TextProtocol) {
 			query!(File, Line)(sql, args);
 		} else {
 			scope(failure) close_();
@@ -511,10 +512,11 @@ private:
 
 		enum argCount = shouldDiscard ? args.length : (args.length - 1);
 
-		auto querySQL =  (argCount || (options_ & ConnectionOptions.TextProtocolCheckNoArgs)) ?
-			prepareSQL!(File, Line)(sql, args[0..argCount])
-			:
-			sql;
+		static if (argCount || (Options & ConnectionOptions.TextProtocolCheckNoArgs)) {
+			auto querySQL =  prepareSQL!(File, Line)(sql, args[0..argCount]);
+		} else {
+			auto querySQL =  sql;
+		}
 
 		version(development) {
 			import std.stdio;
@@ -1174,7 +1176,6 @@ private:
 	ConnectionStatus status_;
 	ConnectionSettings settings_;
 	ServerInfo server_;
-	ConnectionOptions options_;
 
 	// For tracing queries
 	bool trace_;

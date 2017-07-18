@@ -36,6 +36,17 @@ void usedb() {
 	});
 
 
+	// simple select statement
+	string[string] rows;
+	execute(conn, "select name, email from users where id > ?", 13, (MySQLRow row) {
+		rows ~= row.toAA();
+	});
+	
+	foreach(row; rows) {
+		writeln(row["name"], row["email"]);
+	}
+
+
 	// batch inserter - inserts in packets of 128k bytes
 	auto insert = inserter(conn, "users_copy", "name", "email");
 	foreach(user; users)
@@ -119,5 +130,7 @@ void usedb() {
 		string ownerLastName;	// matches ownerLastName and owner_last_name
 		string feedURL;			// matches feedURL and feed_url
 	}
+	
+	conn.close();
 }
 ```
