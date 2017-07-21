@@ -191,7 +191,9 @@ struct MySQLValue {
 		case MYSQL_TYPE_DATETIME2:
 		case MYSQL_TYPE_TIMESTAMP:
 		case MYSQL_TYPE_TIMESTAMP2:
-			formattedWrite(&app, "%s", (*cast(MySQLDateTime*)buffer_.ptr).to!DateTime());
+			DateTime dt = (*cast(MySQLDateTime*)buffer_.ptr).to!DateTime();
+			app.put(dt.date().toISOExtString() ~ " " ~ dt.timeOfDay().toISOExtString());
+			//formattedWrite(&app, "%s", (*cast(MySQLDateTime*)buffer_.ptr).to!DateTime());
 			break;
 		}
 	}
