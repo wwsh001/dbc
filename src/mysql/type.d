@@ -7,6 +7,7 @@ import std.conv : parse, to;
 import std.datetime;
 import std.format: format, formattedWrite;
 import std.traits;
+import std.variant;
 
 import mysql.protocol;
 import mysql.packet;
@@ -990,6 +991,102 @@ void eatValueText(ref InputPacket packet, ref const MySQLColumn column, ref MySQ
 		auto x = parseMySQLDateTime(svalue);
 		value = x.valid() ? MySQLValue(column.name, column.type, signed, &x, typeof(x).sizeof) : MySQLValue(column.name, ColumnTypes.MYSQL_TYPE_NULL, signed, null, 0);
 		break;
+	}
+}
+
+void putValueType(T)(ref OutputPacket packet, T value) if (is(Unqual!T == Variant)) {
+	if (!value.hasValue) {
+		putValueType(packet, MySQLValue(null));
+	} else if (value.type == typeid(string)) {
+		putValueType(packet, value.get!string);
+	} else if (value.type == typeid(dstring)) {
+		putValueType(packet, value.get!dstring);
+	} else if (value.type == typeid(wstring)) {
+		putValueType(packet, value.get!wstring);
+	} else if (value.type == typeid(short)) {
+		putValueType(packet, value.get!short);
+	} else if (value.type == typeid(int)) {
+		putValueType(packet, value.get!int);
+	} else if (value.type == typeid(long)) {
+		putValueType(packet, value.get!long);
+	} else if (value.type == typeid(ushort)) {
+		putValueType(packet, value.get!ushort);
+	} else if (value.type == typeid(uint)) {
+		putValueType(packet, value.get!uint);
+	} else if (value.type == typeid(ulong)) {
+		putValueType(packet, value.get!ulong);
+	} else if (value.type == typeid(float)) {
+		putValueType(packet, value.get!float);
+	} else if (value.type == typeid(double)) {
+		putValueType(packet, value.get!double);
+	} else if (value.type == typeid(byte)) {
+		putValueType(packet, value.get!byte);
+	} else if (value.type == typeid(ubyte)) {
+		putValueType(packet, value.get!ubyte);
+	} else if (value.type == typeid(bool)) {
+		putValueType(packet, value.get!bool);
+	} else if (value.type == typeid(Date)) {
+		putValueType(packet, value.get!Date);
+	} else if (value.type == typeid(DateTime)) {
+		putValueType(packet, value.get!DateTime);
+	} else if (value.type == typeid(SysTime)) {
+		putValueType(packet, value.get!SysTime);
+	} else if (value.type == typeid(Duration)) {
+		putValueType(packet, value.get!Duration);
+	} else if (value.type == typeid(MySQLBinary)) {
+		putValueType(packet, value.get!MySQLBinary);
+	} else if (value.type == typeid(MySQLValue)) {
+		putValueType(packet, value.get!MySQLValue);
+	} else {
+		throw new Exception("exists unkown type at Variant[]: " ~ value.type.toString());
+	}
+}
+
+void putValue(T)(ref OutputPacket packet, T value) if (is(Unqual!T == Variant)) {
+	if (!value.hasValue) {
+		putValue(packet, MySQLValue(null));
+	} else if (value.type == typeid(string)) {
+		putValue(packet, value.get!string);
+	} else if (value.type == typeid(dstring)) {
+		putValue(packet, value.get!dstring);
+	} else if (value.type == typeid(wstring)) {
+		putValue(packet, value.get!wstring);
+	} else if (value.type == typeid(short)) {
+		putValue(packet, value.get!short);
+	} else if (value.type == typeid(int)) {
+		putValue(packet, value.get!int);
+	} else if (value.type == typeid(long)) {
+		putValue(packet, value.get!long);
+	} else if (value.type == typeid(ushort)) {
+		putValue(packet, value.get!ushort);
+	} else if (value.type == typeid(uint)) {
+		putValue(packet, value.get!uint);
+	} else if (value.type == typeid(ulong)) {
+		putValue(packet, value.get!ulong);
+	} else if (value.type == typeid(float)) {
+		putValue(packet, value.get!float);
+	} else if (value.type == typeid(double)) {
+		putValue(packet, value.get!double);
+	} else if (value.type == typeid(byte)) {
+		putValue(packet, value.get!byte);
+	} else if (value.type == typeid(ubyte)) {
+		putValue(packet, value.get!ubyte);
+	} else if (value.type == typeid(bool)) {
+		putValue(packet, value.get!bool);
+	} else if (value.type == typeid(Date)) {
+		putValue(packet, value.get!Date);
+	} else if (value.type == typeid(DateTime)) {
+		putValue(packet, value.get!DateTime);
+	} else if (value.type == typeid(SysTime)) {
+		putValue(packet, value.get!SysTime);
+	} else if (value.type == typeid(Duration)) {
+		putValue(packet, value.get!Duration);
+	} else if (value.type == typeid(MySQLBinary)) {
+		putValue(packet, value.get!MySQLBinary);
+	} else if (value.type == typeid(MySQLValue)) {
+		putValue(packet, value.get!MySQLValue);
+	} else {
+		throw new Exception("exists unkown type at Variant[]: " ~ value.type.toString());
 	}
 }
 
