@@ -262,7 +262,7 @@ class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default) {
 		static if (Options & ConnectionOptions.TextProtocol) {
 			query!(File, Line)(sql, args);
 		} else {
-			scope(failure) close_();
+			//scope(failure) close_();
 
 			auto id = prepare!(File, Line)(sql);
 			execute!(File, Line)(id, args);
@@ -317,7 +317,7 @@ class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default) {
 	}
 
 	void execute(string File=__FILE__, size_t Line=__LINE__, Args...)(PreparedStatement stmt, Args args) {
-		scope(failure) close_();
+		//scope(failure) close_();
 
 		ensureConnected();
 
@@ -502,7 +502,7 @@ private:
 	}
 
 	void query(string File, size_t Line, Args...)(const(char)[] sql, Args args) {
-		scope(failure) close_();
+		//scope(failure) close_();
 
 		static if (args.length == 0) {
 			enum shouldDiscard = true;
@@ -594,7 +594,7 @@ private:
 	}
 
 	InputPacket retrieve() {
-		scope(failure) close_();
+		//scope(failure) close_();
 
 		ubyte[4] header;
 		socket_.read(header);
@@ -617,7 +617,7 @@ private:
 	}
 
 	void eatHandshake(InputPacket packet) {
-		scope(failure) close_();
+		//scope(failure) close_();
 
 		check!(__FILE__, __LINE__)(packet, true);
 
