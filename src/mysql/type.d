@@ -159,10 +159,20 @@ struct MySQLValue {
 			else formattedWrite(&app, "%d", *cast(ulong*)buffer_.ptr);
 			break;
 		case MYSQL_TYPE_FLOAT:
-			formattedWrite(&app, "%g", *cast(float*)buffer_.ptr);
+			float f = *cast(float*)buffer_.ptr;
+			long l = cast(long)f;
+			f -= l;
+			string str = to!string(l) ~ ((f > 0) ? f.to!string[1 .. $] : "");
+			app.put(str);
+			//formattedWrite(&app, "%g", *cast(float*)buffer_.ptr);
 			break;
 		case MYSQL_TYPE_DOUBLE:
-			formattedWrite(&app, "%g", *cast(double*)buffer_.ptr);
+			double d = *cast(double*)buffer_.ptr;
+			long l = cast(long)d;
+			d -= l;
+			string str = to!string(l) ~ ((d > 0) ? d.to!string[1 .. $] : "");
+			app.put(str);
+			//formattedWrite(&app, "%g", *cast(double*)buffer_.ptr);
 			break;
 		case MYSQL_TYPE_SET:
 		case MYSQL_TYPE_ENUM:
