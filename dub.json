@@ -4,7 +4,7 @@
 		"Shove"
 	],
 	"name": "dbc",
-	"version": "1.0.5",
+	"version": "1.0.6",
 	"targetType": "library",
 	"license": "MIT License",
 	"copyright": "Copyright © 2015, Marcio Martins, Shove",

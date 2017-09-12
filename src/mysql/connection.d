@@ -781,7 +781,8 @@ private:
 			status_.affected = 0;
 			status_.changed = 0;
 			status_.matched = 0;
-			status_.flags = 0;
+			//status_.flags = 0;
+			status_.flags &= StatusFlags.SERVER_STATUS_IN_TRANS;
 			status_.warnings = 0;
 			status_.error = packet.eat!ushort;
 			if (!smallError)
