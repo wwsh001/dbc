@@ -16,13 +16,16 @@ struct Socket {
 
 	void close() {
 		if (socket_) {
+		    socket_.shutdown(SocketShutdown.BOTH);
 			socket_.close();
 			socket_ = null;
 		}
 	}
 
 	void read(ubyte[] buffer) {
-		socket_.receive(buffer);
+	    for (size_t off, len; off < buffer.length; off += len) {
+			len = socket_.receive(buffer[off..$]);
+		}
 	}
 
 	void write(in ubyte[] buffer) {
