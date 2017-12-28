@@ -29,7 +29,9 @@ struct Socket {
 	}
 
 	void write(in ubyte[] buffer) {
-		socket_.send(buffer);
+	    for (size_t off, len; off < buffer.length; off += len) {
+        		len = socket_.send(buffer[off..$]);
+	    }
 	}
 
 //	void flush() {
