@@ -258,6 +258,10 @@ class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default) {
 		return stmt;
 	}
 
+    void executeNoPrepare(string File=__FILE__, size_t Line=__LINE__, Args...)(const(char)[] sql, Args args) {
+		query!(File, Line)(sql, args);
+	}
+
 	void execute(string File=__FILE__, size_t Line=__LINE__, Args...)(const(char)[] sql, Args args) {
 		static if (Options & ConnectionOptions.TextProtocol) {
 			query!(File, Line)(sql, args);
