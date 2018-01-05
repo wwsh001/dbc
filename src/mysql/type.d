@@ -944,12 +944,12 @@ void eatValueText(ref InputPacket packet, ref const MySQLColumn column, ref MySQ
 		value = MySQLValue(column.name, column.type, signed, null, 0);
 		break;
 	case MYSQL_TYPE_TINY:
-		auto x = (svalue.ptr[0] == '-') ? cast(ubyte)(-svalue[1..$].to!byte) : svalue.to!ubyte;
+		auto x = (svalue.ptr[0] == '-') ? cast(ubyte)(-1 * svalue[1..$].to!byte) : svalue.to!ubyte;
 		value = MySQLValue(column.name, column.type, signed, &x, 1);
 		break;
 	case MYSQL_TYPE_YEAR:
 	case MYSQL_TYPE_SHORT:
-		auto x = (svalue.ptr[0] == '-') ? cast(ushort)(-svalue[1..$].to!short) : svalue.to!ushort;
+		auto x = (svalue.ptr[0] == '-') ? cast(ushort)(-1 * svalue[1..$].to!short) : svalue.to!ushort;
 		value = MySQLValue(column.name, column.type, signed, &x, 2);
 		break;
 	case MYSQL_TYPE_INT24:
