@@ -1,6 +1,7 @@
 module mysql.socket;
 
 import std.socket;
+import std.exception;
 
 struct Socket {
 	void connect(const(char)[] host, ushort port) {
@@ -25,16 +26,16 @@ struct Socket {
 	void read(ubyte[] buffer) {
 	    for (size_t off, len; off < buffer.length; off += len) {
 			len = socket_.receive(buffer[off..$]);
-			enforceEx!MYX(len != 0, "Server closed the connection");
-			enforceEx!MYX(len != socket.ERROR, "Received std.socket.Socket.ERROR");
+			enforce(len != 0, "Server closed the connection");
+			enforce(len != std.socket.Socket.ERROR, "Received std.socket.Socket.ERROR");
 		}
 	}
 
 	void write(in ubyte[] buffer) {
 	    for (size_t off, len; off < buffer.length; off += len) {
         		len = socket_.send(buffer[off..$]);
-        		enforceEx!MYX(len != 0, "Server closed the connection");
-			enforceEx!MYX(len != socket.ERROR, "Received std.socket.Socket.ERROR");
+        		enforce(len != 0, "Server closed the connection");
+			enforce(len != std.socket.Socket.ERROR, "Received std.socket.Socket.ERROR");
 	    }
 	}
 
