@@ -25,12 +25,16 @@ struct Socket {
 	void read(ubyte[] buffer) {
 	    for (size_t off, len; off < buffer.length; off += len) {
 			len = socket_.receive(buffer[off..$]);
+			enforceEx!MYX(len != 0, "Server closed the connection");
+			enforceEx!MYX(len != socket.ERROR, "Received std.socket.Socket.ERROR");
 		}
 	}
 
 	void write(in ubyte[] buffer) {
 	    for (size_t off, len; off < buffer.length; off += len) {
         		len = socket_.send(buffer[off..$]);
+        		enforceEx!MYX(len != 0, "Server closed the connection");
+			enforceEx!MYX(len != socket.ERROR, "Received std.socket.Socket.ERROR");
 	    }
 	}
 
