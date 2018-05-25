@@ -22,6 +22,14 @@ void appendValue(Appender, T)(ref Appender appender, T value) if (is(Unqual!T ==
 	appender.put("null");
 }
 
+void appendValue(Appender, T)(ref Appender appender, T value) if (isInstanceOf!(Nullable, T) || isInstanceOf!(NullableRef, T)) {
+	if (value.isNull) {
+		appendValue(appender, null);
+	} else {
+		appendValue(appender, value.get);
+	}
+}
+
 void appendValue(Appender, T)(ref Appender appender, T value) if (isScalarType!T) {
 	appender.put(cast(ubyte[])to!string(value));
 }

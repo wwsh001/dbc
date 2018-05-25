@@ -498,7 +498,22 @@ class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default) {
 		return allowClientPreparedCache_;
 	}
 
+package:
+
+    bool busy_ = false;
+
+    @property bool busy()
+    {
+        return busy_;
+    }
+
+    @property void busy(bool value)
+    {
+        busy_ = value;
+    }
+
 private:
+
 	void close_() {
 		close();
 		if (onClose_ && error)
