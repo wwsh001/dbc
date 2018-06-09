@@ -47,6 +47,13 @@ void usedb() {
 	}
 
 
+	// batch inserter - inserts in packets of 128k bytes
+	auto insert = inserter(conn, "users_copy", "name", "email");
+	foreach(user; users)
+		insert.row(user.name, user.email);
+	insert.flush;
+
+
 	// re-usable prepared statements
 	auto upd = conn.prepare("update users set sequence = ?, login_at = ?, secret = ? where id = ?");
 	ubyte[] bytes = [0x4D, 0x49, 0x4C, 0x4B];
