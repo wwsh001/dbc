@@ -101,16 +101,7 @@ package:
     uint params;
 }
 
-enum ConnectionOptions
-{
-    TextProtocol                = 1 << 0, // Execute method uses the MySQL text protocol under the hood - it's less safe but can increase performance in some situations
-    TextProtocolCheckNoArgs        = 1 << 1, // Check for orphan placeholders even if arguments are passed
-    Default                        = 0
-}
-
-alias MySQLConnection!(ConnectionOptions.Default) Connection;
-
-class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default)
+class Connection
 {
     this(string connectionString)
     {
@@ -166,13 +157,10 @@ class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default)
         eatStatus!(File, Line)(retrieve());
     }
 
-    static if ((Options & ConnectionOptions.TextProtocol) == 0)
+    void reset(string File = __FILE__, size_t Line = __LINE__)()
     {
-        void reset(string File = __FILE__, size_t Line = __LINE__)()
-        {
-            send(Commands.COM_RESET_CONNECTION);
-            eatStatus!(File, Line)(retrieve());
-        }
+        send(Commands.COM_RESET_CONNECTION);
+        eatStatus!(File, Line)(retrieve());
     }
 
     const(char)[] statistics()
@@ -248,18 +236,11 @@ class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default)
 
     void execute(string File = __FILE__, size_t Line = __LINE__, Args...)(const(char)[] sql, Args args)
     {
-        static if (Options & ConnectionOptions.TextProtocol)
-        {
-            query!(File, Line)(sql, args);
-        }
-        else
-        {
-            //scope(failure) close_();
+        //scope(failure) close_();
 
-            auto id = prepare!(File, Line)(sql);
-            execute!(File, Line)(id, args);
-            //closePreparedStatement(id);
-        }
+        auto id = prepare!(File, Line)(sql);
+        execute!(File, Line)(id, args);
+        //closePreparedStatement(id);
     }
 
     void set(T, string File = __FILE__, size_t Line = __LINE__)(const(char)[] variable, T value)
@@ -455,28 +436,6 @@ class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default)
         send(Commands.COM_STMT_CLOSE, data);
     }
 
-    alias OnStatusCallback = scope void delegate(ConnectionStatus status, const(char)[] message);
-    @property void onStatus(OnStatusCallback callback)
-    {
-        onStatus_ = callback;
-    }
-
-    @property OnStatusCallback onStatus() const
-    {
-        return onStatus_;
-    }
-
-    alias OnCloseCallback = scope void delegate();
-    @property void onClose(OnCloseCallback callback)
-    {
-        onClose_ = callback;
-    }
-
-    @property OnCloseCallback onClose() const
-    {
-        return onClose_;
-    }
-
     @property ulong lastInsertId() const
     {
         return status_.lastInsertId;
@@ -523,8 +482,6 @@ class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default)
 
     void reuse()
     {
-        onStatus_ = null;
-
         ensureConnected();
 
         if (inTransaction)
@@ -572,8 +529,6 @@ private:
     void close_()
     {
         close();
-        if (onClose_ && error)
-            onClose_();
     }
 
     void query(string File, size_t Line, Args...)(const(char)[] sql, Args args)
@@ -591,7 +546,7 @@ private:
 
         enum argCount = shouldDiscard ? args.length : (args.length - 1);
 
-        static if (argCount || (Options & ConnectionOptions.TextProtocolCheckNoArgs))
+        static if (argCount)
         {
             auto querySQL =  prepareSQL!(File, Line)(sql, args[0..argCount]);
         }
@@ -872,9 +827,6 @@ private:
                 }
             }
 
-            if (onStatus_)
-                onStatus_(status_, info_);
-
             break;
         case StatusPackets.EOF_Packet:
             status_.affected = 0;
@@ -884,9 +836,6 @@ private:
             status_.warnings = packet.eat!ushort;
             status_.flags = packet.eat!ushort;
             info([]);
-
-            if (onStatus_)
-                onStatus_(status_, info_);
 
             break;
         case StatusPackets.ERR_Packet:
@@ -900,9 +849,6 @@ private:
             if (!smallError)
                 packet.skip(6);
             info(packet.eat!(const(char)[])(packet.remaining));
-
-            if (onStatus_)
-                onStatus_(status_, info_);
 
             switch(status_.error) {
             case ErrorCodes.ER_DUP_ENTRY_WITH_KEY_NAME:
@@ -1214,9 +1160,6 @@ private:
         status_.flags = packet.eat!ushort();
         info([]);
 
-        if (onStatus_)
-            onStatus_(status_, info_);
-
         return status_.flags;
     }
 
@@ -1357,8 +1300,6 @@ private:
     ubyte seq_;
     Appender!(char[]) sql_;
 
-    OnStatusCallback onStatus_;
-    OnCloseCallback onClose_;
     CapabilityFlags caps_;
     ConnectionStatus status_;
     ConnectionSettings settings_;

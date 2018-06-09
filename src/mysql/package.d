@@ -8,4 +8,3 @@ public import mysql.socket;
 public import mysql.type;
 public import mysql.connection;
 public import mysql.inserter;
-public import mysql.appender;
