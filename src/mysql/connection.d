@@ -62,7 +62,7 @@ struct ConnectionSettings {
 					port = to!ushort(value);
 					break;
 				default:
-					throw new MySQLException("Bad connection string: " ~ cast(string)connectionString);
+        			throw new MySQLException(format("Bad connection string: %s", connectionString));
 			}
 
 			if (indexValueEnd == remaining.length)
@@ -72,7 +72,7 @@ struct ConnectionSettings {
 			indexValue = remaining.indexOf("=");
 		}
 
-		throw new MySQLException("Bad connection string: " ~ cast(string)connectionString);
+		throw new MySQLException(format("Bad connection string: %s", connectionString));
 	}
 
 	CapabilityFlags caps = DefaultClientCaps;
@@ -121,7 +121,7 @@ private struct ServerInfo {
 
 
 @property string placeholders(T)(T x, bool parens = true) if (is(typeof(() { auto y = x.length; }))) {
-	return x.length.placeholders;
+	return x.length.placeholders(parens);
 }
 
 
@@ -243,7 +243,6 @@ class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default) {
 		}
 
 		if (columns) {
-			MySQLColumn def;
 			foreach (i; 0..columns)
 				skipColumnDef(retrieve(), Commands.COM_STMT_PREPARE);
 
@@ -346,8 +345,8 @@ class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default) {
 		static if (argCount) {
 			enum NullsCapacity = 128; // must be power of 2
 			ubyte[NullsCapacity >> 3] nulls;
-			size_t bitsOut = 0;
-			size_t indexArg = 0;
+			size_t bitsOut;
+			size_t indexArg;
 			foreach(i, arg; args[0..argCount]) {
 				const auto index = (indexArg >> 3) & (NullsCapacity - 1);
 				const auto bit = indexArg & 7;
@@ -482,6 +481,17 @@ class MySQLConnection(ConnectionOptions Options = ConnectionOptions.Default) {
 		socket_.close();
 	}
 
+    void reuse() {
+		onStatus_ = null;
+
+		ensureConnected();
+
+		if (inTransaction)
+			rollback;
+		if (settings_.db.length && (settings_.db != schema_))
+			use(settings_.db);
+	}
+
 	@property void trace(bool enable) {
 		trace_ = enable;
 	}
@@ -538,9 +548,9 @@ private:
 		}
 
 		version(development) {
-			import std.stdio;
+			import std.stdio : stderr, writefln;
 			if (trace_)
-				stderr.writeln(querySQL);
+				stderr.writefln("%s:%s %s", File, Line, querySQL);
 		}
 
 		send(Commands.COM_QUERY, querySQL);
@@ -570,8 +580,7 @@ private:
 	}
 
 	void send(Commands cmd, ubyte* data = null, size_t length = 0) {
-		if(!socket_.connected)
-			connect();
+		ensureConnected();
 
 		seq_ = 0;
 		auto header = OutputPacket(&out_);
@@ -585,7 +594,7 @@ private:
 	}
 
 	void ensureConnected() {
-		if(!socket_.connected)
+		if (!socket_.connected)
 			connect();
 	}
 
@@ -594,7 +603,7 @@ private:
 		switch (id) {
 		case StatusPackets.ERR_Packet:
 		case StatusPackets.OK_Packet:
-			return 1;
+			return true;
 		default:
 			return false;
 		}
@@ -641,7 +650,7 @@ private:
 		check!(__FILE__, __LINE__)(packet, true);
 
 		server_.protocol = packet.eat!ubyte;
-		server_.versionString = packet.eat!(const(char)[])(packet.countUntil(0, true));
+		server_.versionString = packet.eat!(const(char)[])(packet.countUntil(0, true)).dup;
 		packet.skip(1);
 
 		server_.connection = packet.eat!uint;
@@ -684,24 +693,18 @@ private:
 
 		ubyte[20] token;
 		{
-			import std.digest.sha;
+			import std.digest.sha : sha1Of;
 
 			auto pass = sha1Of(cast(const(ubyte)[])settings_.pwd);
-			token = sha1Of(pass);
-
-			SHA1 sha1;
-			sha1.start();
-			sha1.put(auth[0..authLength]);
-			sha1.put(token);
-			token = sha1.finish();
+			token = sha1Of(auth[0..authLength], sha1Of(pass));
 
 			foreach (i; 0..20)
 				token[i] = token[i] ^ pass[i];
 		}
 
-		caps_ = cast(CapabilityFlags)(settings_.caps & server_.caps);
-
+        caps_ = cast(CapabilityFlags)(settings_.caps & server_.caps);
 		auto reply = OutputPacket(&out_);
+
 		reply.reserve(64 + settings_.user.length + settings_.pwd.length + settings_.db.length);
 
 		reply.put!uint(caps_);
@@ -814,13 +817,13 @@ private:
 			switch(status_.error) {
 			case ErrorCodes.ER_DUP_ENTRY_WITH_KEY_NAME:
 			case ErrorCodes.ER_DUP_ENTRY:
-				throw new MySQLDuplicateEntryException(cast(string)info_, File, Line);
+				throw new MySQLDuplicateEntryException(info_.idup, File, Line);
 			default:
 				version(development) {
 					// On dev show the query together with the error message
-					throw new MySQLErrorException(cast(string)info_ ~ " - " ~ cast(string)sql_.data, File, Line);
+    				throw new MySQLErrorException(format("%s - %s", info_, sql_.data), File, Line);
 				} else {
-					throw new MySQLErrorException(cast(string)info_, File, Line);
+					throw new MySQLErrorException(info_.idup, File, Line);
 				}
 			}
 		default:
@@ -876,7 +879,7 @@ private:
 			columnDef(retrieve(), cmd, defs[i]);
 	}
 
-	bool callHandler(RowHandler)(RowHandler handler, size_t i, MySQLHeader header, MySQLRow row) if ((ParameterTypeTuple!(RowHandler).length == 1) && is(ParameterTypeTuple!(RowHandler)[0] == MySQLRow)) {
+	bool callHandler(RowHandler)(RowHandler handler, size_t, MySQLHeader, MySQLRow row) if ((ParameterTypeTuple!(RowHandler).length == 1) && is(ParameterTypeTuple!(RowHandler)[0] == MySQLRow)) {
 		static if (is(ReturnType!(RowHandler) == void)) {
 			handler(row);
 			return true;
@@ -885,7 +888,7 @@ private:
 		}
 	}
 
-	bool callHandler(RowHandler)(RowHandler handler, size_t i, MySQLHeader header, MySQLRow row) if ((ParameterTypeTuple!(RowHandler).length == 2) && isNumeric!(ParameterTypeTuple!(RowHandler)[0]) && is(ParameterTypeTuple!(RowHandler)[1] == MySQLRow)) {
+	bool callHandler(RowHandler)(RowHandler handler, size_t i, MySQLHeader, MySQLRow row) if ((ParameterTypeTuple!(RowHandler).length == 2) && isNumeric!(ParameterTypeTuple!(RowHandler)[0]) && is(ParameterTypeTuple!(RowHandler)[1] == MySQLRow)) {
 		static if (is(ReturnType!(RowHandler) == void)) {
 			handler(cast(ParameterTypeTuple!(RowHandler)[0])i, row);
 			return true;
@@ -894,7 +897,7 @@ private:
 		}
 	}
 
-	bool callHandler(RowHandler)(RowHandler handler, size_t i, MySQLHeader header, MySQLRow row) if ((ParameterTypeTuple!(RowHandler).length == 2) && is(ParameterTypeTuple!(RowHandler)[0] == MySQLHeader) && is(ParameterTypeTuple!(RowHandler)[1] == MySQLRow)) {
+	bool callHandler(RowHandler)(RowHandler handler, size_t, MySQLHeader header, MySQLRow row) if ((ParameterTypeTuple!(RowHandler).length == 2) && is(ParameterTypeTuple!(RowHandler)[0] == MySQLHeader) && is(ParameterTypeTuple!(RowHandler)[1] == MySQLRow)) {
 		static if (is(ReturnType!(RowHandler) == void)) {
 			handler(header, row);
 			return true;
@@ -912,7 +915,7 @@ private:
 		}
 	}
 
-	void resultSetRow(InputPacket packet, Commands cmd, MySQLHeader header, ref MySQLRow row) {
+	void resultSetRow(InputPacket packet, MySQLHeader header, ref MySQLRow row) {
 		assert(row.columns.length == header.length);
 
 		packet.expect!ubyte(0);
@@ -942,7 +945,7 @@ private:
 		if (status.peek!ubyte == StatusPackets.ERR_Packet)
 			eatStatus!(File, Line)(status);
 
-		size_t index = 0;
+		size_t index;
 		auto statusFlags = eatEOF(status);
 		if (statusFlags & StatusFlags.SERVER_STATUS_CURSOR_EXISTS) {
 			uint[2] data = [ stmt, 4096 ]; // todo: make setting - rows per fetch
@@ -960,7 +963,7 @@ private:
 						break;
 					}
 
-					resultSetRow(row, Commands.COM_STMT_FETCH, header_, row_);
+					resultSetRow(row, header_, row_);
 					if (!callHandler(handler, index++, header_, row_)) {
 						discardUntilEOF(retrieve());
 						statusFlags = 0;
@@ -977,7 +980,7 @@ private:
 					break;
 				}
 
-				resultSetRow(row, cmd, header_, row_);
+				resultSetRow(row, header_, row_);
 				if (!callHandler(handler, index++, header_, row_)) {
 					discardUntilEOF(retrieve());
 					break;
@@ -986,7 +989,7 @@ private:
 		}
 	}
 
-	void resultSetRowText(InputPacket packet, Commands cmd, MySQLHeader header, ref MySQLRow row) {
+	void resultSetRowText(InputPacket packet, MySQLHeader header, ref MySQLRow row) {
 		assert(row.columns.length == header.length);
 
 		foreach(i, ref column; header) {
@@ -1010,7 +1013,7 @@ private:
 
 		eatEOF(retrieve());
 
-		size_t index = 0;
+		size_t index;
 		while (true) {
 			auto row = retrieve();
 			if (row.peek!ubyte == StatusPackets.EOF_Packet) {
@@ -1021,7 +1024,7 @@ private:
 				break;
 			}
 
-			resultSetRowText(row, cmd, header_, row_);
+			resultSetRowText(row, header_, row_);
 			if (!callHandler(handler, index++, header_, row_)) {
 				discardUntilEOF(retrieve());
 				break;
@@ -1243,7 +1246,7 @@ private auto copyUpToNext(ref Appender!(char[]) app, ref const(char)[] sql) {
 }
 
 private bool appendNextValue(T)(ref Appender!(char[]) app, ref const(char)[] sql, ref size_t indexArg, const(void)* arg) {
-	static if (isArray!T && !isSomeString!T) {
+	static if (isArray!T && !isSomeString!(OriginalType!T)) {
 		foreach (i, ref v; *cast(T*)arg) {
 			if (copyUpToNext(app, sql)) {
 				appendValue(app, v);

@@ -41,7 +41,7 @@ auto inserter(ConnectionType, Args...)(auto ref ConnectionType connection, strin
 
 
 private template isSomeStringOrSomeStringArray(T) {
-	enum isSomeStringOrSomeStringArray = isSomeString!T || (isArray!T && isSomeString!(ElementType!T));
+	enum isSomeStringOrSomeStringArray = isSomeString!(OriginalType!T) || (isArray!T && isSomeString!(ElementType!T));
 }
 
 
@@ -67,7 +67,7 @@ struct Inserter(ConnectionType) {
 		auto fieldCount = fieldNames.length;
 
 		foreach (size_t i, Arg; Args) {
-			static if (isArray!Arg && !isSomeString!Arg) {
+			static if (isArray!Arg && !isSomeString!(OriginalType!Arg)) {
 				fieldCount = (fieldCount - 1) + fieldNames[i].length;
 			}
 		}
@@ -87,7 +87,7 @@ struct Inserter(ConnectionType) {
 			Appender!(char[]) dupapp;
 
 			foreach(size_t i, Arg; Args) {
-				static if (isSomeString!Arg) {
+				static if (isSomeString!(OriginalType!Arg)) {
 					dupapp.put('`');
 					dupapp.put(fieldNames[i]);
 					dupapp.put("`=values(`");
@@ -120,7 +120,7 @@ struct Inserter(ConnectionType) {
 		app.put('(');
 
 		foreach(size_t i, Arg; Args) {
-			static if (isSomeString!Arg) {
+			static if (isSomeString!(OriginalType!Arg)) {
 				app.put('`');
 				app.put(fieldNames[i]);
 				app.put('`');
@@ -154,7 +154,7 @@ struct Inserter(ConnectionType) {
 		auto valueCount = values.length;
 
 		foreach (size_t i, Value; Values) {
-			static if (isArray!Value && !isSomeString!Value) {
+			static if (isArray!Value && !isSomeString!(OriginalType!Value)) {
 				valueCount = (valueCount - 1) + values[i].length;
 			}
 		}
@@ -168,7 +168,7 @@ struct Inserter(ConnectionType) {
 		values_.put(pending_ ? ",(" : "(");
 		++pending_;
 		foreach (size_t i, Value; Values) {
-			static if (isArray!Value && !isSomeString!Value) {
+			static if (isArray!Value && !isSomeString!(OriginalType!Value)) {
 				appendValues(values_, values[i]);
 			} else {
 				appendValue(values_, values[i]);
