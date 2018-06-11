@@ -8,5 +8,6 @@
 	"license": "MIT License",
 	"copyright": "Copyright © 2015, Marcio Martins, Shove",
 	"targetName": "dbc",
-	"description": "Lightweight native MySQL/MariaDB driver"
+	"description": "Lightweight native MySQL/MariaDB driver",
+    "dflags-dmd": ["-allinst"]
 }
